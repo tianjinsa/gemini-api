@@ -1,0 +1,15 @@
+{
+  "name": "node_proxy_app",
+  "version": "1.0.0",
+  "description": "Gemini API proxy application for Node.js",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
