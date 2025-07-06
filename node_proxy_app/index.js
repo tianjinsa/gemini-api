@@ -1,7 +1,6 @@
 // @ts-nocheck
 const http = require('http');
 const https = require('https');
-const fs = require('fs').promises;
 const path = require('path');
 const WebSocket = require('ws');
 
@@ -28,38 +27,7 @@ const requestsPerIP = new Map();
 let totalTraffic = 0; // 单位：字节，基于 Content-Length
 const trafficPerIP = new Map(); // 新增：记录每个IP的流量
 
-// 定义敏感文件路径的正则表达式
-const SENSITIVE_FILE_PATTERNS = [
-  /\.log$/,
-  /\.sql$/,
-  /\.zip$/,
-  /\.tar\.gz$/,
-  /\.env$/,
-  /^\/\.git/,
-  /^\/\.svn/,
-  /^\/\.DS_Store/,
-  /backup/i,
-  /dump/i,
-  /database/i
-];
 
-// 检查是否为敏感文件路径
-function isSensitivePath(path) {
-  return SENSITIVE_FILE_PATTERNS.some(pattern => pattern.test(path));
-}
-
-// 引入安全模块
-// const { PathDetector, ScanDetector, SecurityAuditLogger } = require("./core/security.js");
-
-// 初始化安全组件
-// const pathDetector = new PathDetector();
-// const scanDetector = new ScanDetector();
-// const securityLogger = new SecurityAuditLogger();
-
-// 检查是否为敏感文件路径（使用安全模块）
-// function isSensitivePath(path) {
-//   return pathDetector.isSensitive(path);
-// }
 
 // 添加一个结构化日志工具
 const logger = {
@@ -370,7 +338,7 @@ async function handleAPIRequest(req, res, clientIP) {
       if (!req.headers['x-goog-api-key'] && !req.headers['authorization']) {
         req.headers['x-goog-api-key'] = apiKeyInUrl;
       }
-      //url.searchParams.delete('key'); // 从URL中移除，避免重复或泄露
+      url.searchParams.delete('key'); // 从URL中移除，避免重复或泄露
     }
 
     const targetUrl = `https://generativelanguage.googleapis.com${targetPath}${url.search}`;
