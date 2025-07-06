@@ -510,8 +510,7 @@ async function handleRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const clientIP = getClientIP(req);
 
-    // 在处理前记录请求信息
-    logger.info('收到请求', { clientIP, path: url.pathname+url.search});
+    
     // 1. 检查IP是否在封禁列表中
     const unblockTime = blockedIPs.get(clientIP);
     if (unblockTime && Date.now() < unblockTime) {
@@ -539,7 +538,8 @@ async function handleRequest(req, res) {
       blockedIPAttempts.delete(clientIP); // 同时清除尝试记录
     }
 
-    
+    // 在处理前记录请求信息
+    logger.info('收到请求', { clientIP, path: url.pathname+url.search});
 
     
     // 2. 添加健康检查端点
