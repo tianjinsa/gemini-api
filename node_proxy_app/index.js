@@ -518,10 +518,10 @@ async function handleRequest(req, res) {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         totalRequests,
-        totalTrafficInKB: (totalTraffic / 1024).toFixed(3),
+        totalTrafficInMB: (totalTraffic / 1024 / 1024).toFixed(3),
         ipStats: Object.fromEntries(Array.from(requestsPerIP.keys()).map(ip => [
           ip,
-          `${requestsPerIP.get(ip) || 0} 次, ${((trafficPerIP.get(ip) || 0) / 1024).toFixed(3)} KB`
+          `${requestsPerIP.get(ip) || 0} 次, ${((trafficPerIP.get(ip) || 0) / 1024 / 1024).toFixed(3)} MB`
         ]))
       }));
       return;
