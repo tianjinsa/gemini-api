@@ -25,7 +25,10 @@ const API_REQUEST_TIMEOUT_MS = 60000; // 60秒
 let totalRequests = 0;
 const requestsPerIP = new Map();
 let totalTraffic = 0; // 单位：字节，基于 Content-Length
-const trafficPerIP = new Map(); // 新增：记录每个IP的流量
+let totalIncomingTraffic = 0; // 传入流量
+let totalOutgoingTraffic = 0; // 传出流量
+const incomingTrafficPerIP = new Map(); // 每个IP的传入流量
+const outgoingTrafficPerIP = new Map(); // 每个IP的传出流量
 
 
 
@@ -38,7 +41,7 @@ const logger = {
   },
   debug: (message, data) => logger.log('debug', message, data),
   info: (message, data) => logger.log('info', message, data),
-  warn: (message, data) => logger.log('warn', message, data),
+  warn: (message, data) => logger.log('！warn', message, data),
   error: (message, data) => logger.log('error', message, data),
 };
 
@@ -160,8 +163,8 @@ async function handleWebSocket(req, res, clientIP) {
           try {
             const messageSize = message.length;
             logger.debug('收到客户端消息', { size: messageSize });
-            totalTraffic += messageSize;
-            trafficPerIP.set(clientIP, (trafficPerIP.get(clientIP) || 0) + messageSize);
+            totalIncomingTraffic += messageSize;
+            incomingTrafficPerIP.set(clientIP, (incomingTrafficPerIP.get(clientIP) || 0) + messageSize);
             if (targetWs.readyState === WebSocket.OPEN) {
               targetWs.send(message);
             } else if (targetWs.readyState === WebSocket.CONNECTING) {
@@ -186,8 +189,8 @@ async function handleWebSocket(req, res, clientIP) {
           try {
             const messageSize = message.length;
             logger.debug('收到Gemini消息', { size: messageSize });
-            totalTraffic += messageSize;
-            trafficPerIP.set(clientIP, (trafficPerIP.get(clientIP) || 0) + messageSize);
+            totalOutgoingTraffic += messageSize;
+            outgoingTrafficPerIP.set(clientIP, (outgoingTrafficPerIP.get(clientIP) || 0) + messageSize);
             if (clientWs.readyState === WebSocket.OPEN) {
               clientWs.send(message);
             }
@@ -315,8 +318,8 @@ async function handleAPIRequest(req, res, clientIP) {
     totalRequests++;
     requestsPerIP.set(clientIP, (requestsPerIP.get(clientIP) || 0) + 1);
     const requestSize = parseInt(req.headers['content-length'] || '0', 10);
-    totalTraffic += requestSize;
-    trafficPerIP.set(clientIP, (trafficPerIP.get(clientIP) || 0) + requestSize);
+    totalIncomingTraffic += requestSize;
+    incomingTrafficPerIP.set(clientIP, (incomingTrafficPerIP.get(clientIP) || 0) + requestSize);
 
     const url = new URL(req.url, `http://${req.headers.host}`);
     const path = url.pathname;
@@ -388,8 +391,8 @@ async function handleAPIRequest(req, res, clientIP) {
           responseSize += chunk.length;
         });
         proxyRes.on('end', () => {
-          totalTraffic += responseSize;
-          trafficPerIP.set(clientIP, (trafficPerIP.get(clientIP) || 0) + responseSize);
+          totalOutgoingTraffic += responseSize;
+          outgoingTrafficPerIP.set(clientIP, (outgoingTrafficPerIP.get(clientIP) || 0) + responseSize);
         });
 
         // 处理响应流错误
@@ -492,7 +495,7 @@ async function handleRequest(req, res) {
       blockedIPAttempts.set(clientIP, validAttempts);
 
       if (validAttempts.length >= FIREWALL_BLOCK_THRESHOLD) {
-        logger.error('检测到持续攻击，建议使用 fail2ban 等工具自动封禁IP', { clientIP });
+        logger.warn('检测到持续攻击，建议使用 fail2ban 等工具自动封禁IP', { clientIP });
         // 清除记录，防止在日志中重复报告相同的IP
         blockedIPAttempts.delete(clientIP);
       }
@@ -518,10 +521,15 @@ async function handleRequest(req, res) {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         totalRequests,
-        totalTrafficInMB: (totalTraffic / 1024 / 1024).toFixed(3),
+        totalIncomingTrafficMB: (totalIncomingTraffic / 1024 / 1024).toFixed(3),
+        totalOutgoingTrafficMB: (totalOutgoingTraffic / 1024 / 1024).toFixed(3),
         ipStats: Object.fromEntries(Array.from(requestsPerIP.keys()).map(ip => [
           ip,
-          `${requestsPerIP.get(ip) || 0} 次, ${((trafficPerIP.get(ip) || 0) / 1024 / 1024).toFixed(3)} MB`
+          {
+            requests: requestsPerIP.get(ip) || 0,
+            incomingTrafficMB: ((incomingTrafficPerIP.get(ip) || 0) / 1024 / 1024).toFixed(3),
+            outgoingTrafficMB: ((outgoingTrafficPerIP.get(ip) || 0) / 1024 / 1024).toFixed(3)
+          }
         ]))
       }));
       return;
@@ -566,7 +574,7 @@ async function handleRequest(req, res) {
     }
 
     // 对于所有其他请求，视为非法访问并封禁IP
-    logger.error('无效路径访问尝试，正在封禁IP', { clientIP, path: url.pathname });
+    logger.warn('无效路径访问尝试，正在封禁IP', { clientIP, path: url.pathname });
     blockedIPs.set(clientIP, Date.now() + BLOCK_DURATION_MS);
     // 不返回任何信息，直接销毁socket，让攻击方请求超时
     req.socket.destroy();
