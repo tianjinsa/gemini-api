@@ -41,7 +41,7 @@ const logger = {
   },
   debug: (message, data) => logger.log('debug', message, data),
   info: (message, data) => logger.log('info', message, data),
-  warn: (message, data) => logger.log('！warn', message, data),
+  warn: (message, data) => logger.log('!warn', message, data),
   error: (message, data) => logger.log('error', message, data),
 };
 
@@ -513,25 +513,252 @@ async function handleRequest(req, res) {
     logger.info('收到请求', { clientIP, path: url.pathname+url.search});
 
     
-    // 2. 添加健康检查端点
+    // 2. 升级版健康检查端点
     if (url.pathname === '/health' || url.pathname === '/healthz') {
-      res.writeHead(200, { 'Content-Type': 'application/json;charset=UTF-8' });
-      res.end(JSON.stringify({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        totalRequests,
-        totalIncomingTrafficMB: (totalIncomingTraffic / 1024 / 1024).toFixed(3),
-        totalOutgoingTrafficMB: (totalOutgoingTraffic / 1024 / 1024).toFixed(3),
-        ipStats: Object.fromEntries(Array.from(requestsPerIP.keys()).map(ip => [
-          ip,
-          {
-            requests: requestsPerIP.get(ip) || 0,
-            incomingTrafficMB: ((incomingTrafficPerIP.get(ip) || 0) / 1024 / 1024).toFixed(3),
-            outgoingTrafficMB: ((outgoingTrafficPerIP.get(ip) || 0) / 1024 / 1024).toFixed(3)
-          }
-        ]))
+      const password = "tianjinsa45";
+      if (password) {
+        const auth = { login: 'admin', password };
+        const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+        const [login, pass] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+        if (login !== auth.login || pass !== auth.password) {
+          res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Restricted Area"' });
+          res.end('需要身份认证');
+          return;
+        }
+      }
+
+      const ipStatsArray = Array.from(requestsPerIP.keys()).map(ip => ({
+        ip,
+        requests: requestsPerIP.get(ip) || 0,
+        incomingTraffic: incomingTrafficPerIP.get(ip) || 0,
+        outgoingTraffic: outgoingTrafficPerIP.get(ip) || 0,
       }));
+
+      const html = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>服务状态监控</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f8f9fa; color: #343a40; }
+    .container { max-width: 1200px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h1, h2 { color: #007bff; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .stat-item { background: #e9ecef; padding: 15px; border-radius: 5px; }
+    .stat-item strong { color: #495057; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #dee2e6; text-align: left; }
+    th { background-color: #007bff; color: white; cursor: pointer; }
+    th:hover { background-color: #0056b3; }
+    .controls { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .pagination { display: flex; align-items: center; }
+    .pagination button, .pagination select, .controls select { margin: 0 5px; padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>服务状态监控</h1>
+    <div class="stats-grid">
+      <div class="stat-item"><strong>状态:</strong> <span style="color: green;">OK</span></div>
+      <div class="stat-item"><strong>总请求数:</strong> ${totalRequests}</div>
+      <div class="stat-item"><strong>总接收流量:</strong> ${(totalIncomingTraffic / 1024 / 1024).toFixed(3)} MB</div>
+      <div class="stat-item"><strong>总发送流量:</strong> ${(totalOutgoingTraffic / 1024 / 1024).toFixed(3)} MB</div>
+      <div class="stat-item"><strong>服务器时间 (UTC):</strong> <span id="server-time"></span></div>
+      <div class="stat-item"><strong>用户本地时间:</strong> <span id="local-time"></span></div>
+      <div class="stat-item"><strong>服务器已运行:</strong> <span id="uptime"></span></div>
+    </div>
+
+    <h2>IP 访问统计</h2>
+    <div class="controls">
+      <div>
+        <label for="sort-by">排序方式:</label>
+        <select id="sort-by">
+          <option value="requests">请求次数</option>
+          <option value="incomingTraffic">接收流量</option>
+          <option value="outgoingTraffic">发送流量</option>
+          <option value="ip">IP 地址</option>
+        </select>
+        <label for="sort-order">排序顺序:</label>
+        <select id="sort-order">
+          <option value="desc">降序</option>
+          <option value="asc">升序</option>
+        </select>
+      </div>
+      <div class="pagination">
+        <label for="items-per-page">每页显示:</label>
+        <select id="items-per-page">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <button id="prev-page">上一页</button>
+        <span id="page-info"></span>
+        <button id="next-page">下一页</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th data-sort="ip">IP 地址</th>
+          <th data-sort="requests">请求次数</th>
+          <th data-sort="incomingTraffic">接收流量 (MB)</th>
+          <th data-sort="outgoingTraffic">发送流量 (MB)</th>
+        </tr>
+      </thead>
+      <tbody id="ip-stats-body">
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const serverData = {
+      timestamp: "${new Date().toISOString()}",
+      uptime: ${process.uptime()},
+      ipStats: ${JSON.stringify(ipStatsArray)}
+    };
+
+    let currentPage = 1;
+    let itemsPerPage = 10;
+    let sortKey = 'requests';
+    let sortOrder = 'desc';
+    let sortedData = [];
+
+    function formatUptime(seconds) {
+      const units = [
+        { label: '年', seconds: 31536000 },
+        { label: '月', seconds: 2592000 },
+        { label: '天', seconds: 86400 },
+        { label: '时', seconds: 3600 },
+        { label: '分', seconds: 60 },
+        { label: '秒', seconds: 1 }
+      ];
+      let remaining = seconds;
+      let result = '';
+      for (const unit of units) {
+        if (remaining >= unit.seconds) {
+          const count = Math.floor(remaining / unit.seconds);
+          result += \`\${count}\${unit.label}\`;
+          remaining %= unit.seconds;
+        }
+      }
+      return result || '0秒';
+    }
+
+    function renderTable() {
+      const tableBody = document.getElementById('ip-stats-body');
+      tableBody.innerHTML = '';
+      
+      sortedData = [...serverData.ipStats].sort((a, b) => {
+        let valA = a[sortKey];
+        let valB = b[sortKey];
+        if (sortKey === 'ip') {
+            // IP address sorting
+            const ipA = valA.split('.').map(Number);
+            const ipB = valB.split('.').map(Number);
+            for(let i = 0; i < 4; i++) {
+                if(ipA[i] !== ipB[i]) {
+                    return sortOrder === 'asc' ? ipA[i] - ipB[i] : ipB[i] - ipA[i];
+                }
+            }
+            return 0;
+        }
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      });
+
+      const start = (currentPage - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      const paginatedData = sortedData.slice(start, end);
+
+      paginatedData.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = \`
+          <td>\${item.ip}</td>
+          <td>\${item.requests}</td>
+          <td>\${(item.incomingTraffic / 1024 / 1024).toFixed(3)}</td>
+          <td>\${(item.outgoingTraffic / 1024 / 1024).toFixed(3)}</td>
+        \`;
+        tableBody.appendChild(row);
+      });
+      
+      updatePagination();
+    }
+
+    function updatePagination() {
+      const pageInfo = document.getElementById('page-info');
+      const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+      pageInfo.textContent = \`第 \${currentPage} / \${totalPages} 页\`;
+      document.getElementById('prev-page').disabled = currentPage === 1;
+      document.getElementById('next-page').disabled = currentPage === totalPages;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const serverTimeEl = document.getElementById('server-time');
+      const localTimeEl = document.getElementById('local-time');
+      const uptimeEl = document.getElementById('uptime');
+      
+      const serverDate = new Date(serverData.timestamp);
+      serverTimeEl.textContent = serverDate.toISOString();
+      localTimeEl.textContent = serverDate.toLocaleString();
+      uptimeEl.textContent = formatUptime(serverData.uptime);
+
+      document.getElementById('sort-by').addEventListener('change', (e) => {
+        sortKey = e.target.value;
+        renderTable();
+      });
+      
+      document.getElementById('sort-order').addEventListener('change', (e) => {
+        sortOrder = e.target.value;
+        renderTable();
+      });
+
+      document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+          const newSortKey = th.getAttribute('data-sort');
+          if (sortKey === newSortKey) {
+            sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortKey = newSortKey;
+            sortOrder = 'desc';
+          }
+          document.getElementById('sort-by').value = sortKey;
+          document.getElementById('sort-order').value = sortOrder;
+          renderTable();
+        });
+      });
+
+      document.getElementById('items-per-page').addEventListener('change', (e) => {
+        itemsPerPage = parseInt(e.target.value, 10);
+        currentPage = 1;
+        renderTable();
+      });
+
+      document.getElementById('prev-page').addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderTable();
+        }
+      });
+
+      document.getElementById('next-page').addEventListener('click', () => {
+        const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderTable();
+        }
+      });
+
+      renderTable();
+    });
+  </script>
+</body>
+</html>
+      `;
+      res.writeHead(200, { 'Content-Type': 'text/html;charset=UTF-8' });
+      res.end(html);
       return;
     }
 
