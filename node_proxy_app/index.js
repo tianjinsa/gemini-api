@@ -2,6 +2,7 @@
 const http = require('http');
 const https = require('https');
 const path = require('path');
+const fs = require('fs');
 const WebSocket = require('ws');
 
 
@@ -29,6 +30,7 @@ let totalIncomingTraffic = 0; // 传入流量
 let totalOutgoingTraffic = 0; // 传出流量
 const incomingTrafficPerIP = new Map(); // 每个IP的传入流量
 const outgoingTrafficPerIP = new Map(); // 每个IP的传出流量
+const requestLogsByIP = new Map(); // 记录每个IP的详细请求日志
 
 
 
@@ -41,7 +43,7 @@ const logger = {
   },
   debug: (message, data) => logger.log('debug', message, data),
   info: (message, data) => logger.log('info', message, data),
-  warn: (message, data) => logger.log('!warn', message, data),
+  warn: (message, data) => logger.log('warn', message, data),
   error: (message, data) => logger.log('error', message, data),
 };
 
@@ -104,7 +106,7 @@ async function handleWebSocket(req, res, clientIP) {
 
     // 添加错误处理
     wss.on('error', (err) => {
-      logger.error('WebSocket server error', { 
+      logger.error('WebSocket server error', {
         error: {
           name: err.name,
           message: err.message,
@@ -115,11 +117,22 @@ async function handleWebSocket(req, res, clientIP) {
 
     wss.on('connection', (clientWs, request) => {
       try {
+        const url = new URL(request.url, `http://${request.headers.host}`);
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            path: url.pathname + url.search,
+            incomingTraffic: 0,
+            outgoingTraffic: 0,
+        };
+
         // 为每个WebSocket连接增加请求计数
         totalRequests++;
         requestsPerIP.set(clientIP, (requestsPerIP.get(clientIP) || 0) + 1);
-
-        const url = new URL(request.url, `http://${request.headers.host}`);
+        if (!requestLogsByIP.has(clientIP)) {
+            requestLogsByIP.set(clientIP, []);
+        }
+        requestLogsByIP.get(clientIP).push(logEntry);
+        
         const targetUrl = `wss://generativelanguage.googleapis.com${url.pathname}${url.search}`;
         
         // 检查URL是否包含API密钥参数
@@ -148,7 +161,7 @@ async function handleWebSocket(req, res, clientIP) {
             try {
               targetWs.send(msg);
             } catch (err) {
-              logger.error('发送待处理消息时出错', { 
+              logger.error('发送待处理消息时出错', {
                 error: {
                   name: err.name,
                   message: err.message
@@ -165,17 +178,18 @@ async function handleWebSocket(req, res, clientIP) {
             logger.debug('收到客户端消息', { size: messageSize });
             totalIncomingTraffic += messageSize;
             incomingTrafficPerIP.set(clientIP, (incomingTrafficPerIP.get(clientIP) || 0) + messageSize);
+            logEntry.incomingTraffic += messageSize;
             if (targetWs.readyState === WebSocket.OPEN) {
               targetWs.send(message);
             } else if (targetWs.readyState === WebSocket.CONNECTING) {
               pendingMessages.push(message);
             } else {
-              logger.warn('目标WebSocket未打开，丢弃客户端消息', { 
-                readyState: targetWs.readyState 
+              logger.warn('目标WebSocket未打开，丢弃客户端消息', {
+                readyState: targetWs.readyState
               });
             }
           } catch (err) {
-            logger.error('处理客户端消息时出错', { 
+            logger.error('处理客户端消息时出错', {
               error: {
                 name: err.name,
                 message: err.message,
@@ -191,11 +205,12 @@ async function handleWebSocket(req, res, clientIP) {
             logger.debug('收到Gemini消息', { size: messageSize });
             totalOutgoingTraffic += messageSize;
             outgoingTrafficPerIP.set(clientIP, (outgoingTrafficPerIP.get(clientIP) || 0) + messageSize);
+            logEntry.outgoingTraffic += messageSize;
             if (clientWs.readyState === WebSocket.OPEN) {
               clientWs.send(message);
             }
           } catch (err) {
-            logger.error('转发Gemini消息时出错', { 
+            logger.error('转发Gemini消息时出错', {
               error: {
                 name: err.name,
                 message: err.message,
@@ -215,7 +230,7 @@ async function handleWebSocket(req, res, clientIP) {
               targetWs.terminate();
             }
           } catch (err) {
-            logger.error('处理客户端关闭时出错', { 
+            logger.error('处理客户端关闭时出错', {
               error: {
                 name: err.name,
                 message: err.message
@@ -234,7 +249,7 @@ async function handleWebSocket(req, res, clientIP) {
               clientWs.terminate();
             }
           } catch (err) {
-            logger.error('处理目标关闭时出错', { 
+            logger.error('处理目标关闭时出错', {
               error: {
                 name: err.name,
                 message: err.message
@@ -244,7 +259,7 @@ async function handleWebSocket(req, res, clientIP) {
         });
 
         clientWs.on('error', (err) => {
-          logger.error('Client WebSocket error', { 
+          logger.error('Client WebSocket error', {
             error: {
               name: err.name,
               message: err.message,
@@ -258,7 +273,7 @@ async function handleWebSocket(req, res, clientIP) {
         });
 
         targetWs.on('error', (err) => {
-          logger.error('Gemini WebSocket error', { 
+          logger.error('Gemini WebSocket error', {
             error: {
               name: err.name,
               message: err.message,
@@ -271,7 +286,7 @@ async function handleWebSocket(req, res, clientIP) {
           }
         });
       } catch (err) {
-        logger.error('WebSocket connection handling error', { 
+        logger.error('WebSocket connection handling error', {
           error: {
             name: err.name,
             message: err.message,
@@ -286,7 +301,7 @@ async function handleWebSocket(req, res, clientIP) {
       try {
         wss.emit('connection', clientWs, req);
       } catch (err) {
-        logger.error('WebSocket升级期间出错', { 
+        logger.error('WebSocket升级期间出错', {
           error: {
             name: err.name,
             message: err.message,
@@ -297,7 +312,7 @@ async function handleWebSocket(req, res, clientIP) {
       }
     });
   } catch (err) {
-    logger.error('WebSocket处理程序错误', { 
+    logger.error('WebSocket处理程序错误', {
       error: {
         name: err.name,
         message: err.message,
@@ -314,14 +329,24 @@ async function handleWebSocket(req, res, clientIP) {
 
 async function handleAPIRequest(req, res, clientIP) {
   try {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const requestSize = parseInt(req.headers['content-length'] || '0', 10);
+    const logEntry = {
+        timestamp: new Date().toISOString(),
+        path: url.pathname + url.search,
+        incomingTraffic: requestSize,
+        outgoingTraffic: 0,
+    };
+
     // 增加统计数据
     totalRequests++;
     requestsPerIP.set(clientIP, (requestsPerIP.get(clientIP) || 0) + 1);
-    const requestSize = parseInt(req.headers['content-length'] || '0', 10);
     totalIncomingTraffic += requestSize;
     incomingTrafficPerIP.set(clientIP, (incomingTrafficPerIP.get(clientIP) || 0) + requestSize);
-
-    const url = new URL(req.url, `http://${req.headers.host}`);
+    if (!requestLogsByIP.has(clientIP)) {
+        requestLogsByIP.set(clientIP, []);
+    }
+    requestLogsByIP.get(clientIP).push(logEntry);
     const path = url.pathname;
     const authHeader = req.headers['authorization'];
     const isOpenAI = path.startsWith('/v1beta/openai/') || !!authHeader;
@@ -393,6 +418,7 @@ async function handleAPIRequest(req, res, clientIP) {
         proxyRes.on('end', () => {
           totalOutgoingTraffic += responseSize;
           outgoingTrafficPerIP.set(clientIP, (outgoingTrafficPerIP.get(clientIP) || 0) + responseSize);
+          logEntry.outgoingTraffic = responseSize;
         });
 
         // 处理响应流错误
@@ -515,7 +541,7 @@ async function handleRequest(req, res) {
     
     // 2. 升级版健康检查端点
     if (url.pathname === '/health' || url.pathname === '/healthz') {
-      const password = "tianjinsa45";
+      const password = process.env.HEALTH_CHECK_PASSWORD;
       if (password) {
         const auth = { login: 'admin', password };
         const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
@@ -528,237 +554,39 @@ async function handleRequest(req, res) {
         }
       }
 
-      const ipStatsArray = Array.from(requestsPerIP.keys()).map(ip => ({
-        ip,
-        requests: requestsPerIP.get(ip) || 0,
-        incomingTraffic: incomingTrafficPerIP.get(ip) || 0,
-        outgoingTraffic: outgoingTrafficPerIP.get(ip) || 0,
-      }));
+      try {
+        const htmlTemplate = fs.readFileSync(path.join(__dirname, 'health.html'), 'utf-8');
+        
+        const ipStatsArray = Array.from(requestsPerIP.keys()).map(ip => ({
+          ip,
+          requests: requestsPerIP.get(ip) || 0,
+          incomingTraffic: incomingTrafficPerIP.get(ip) || 0,
+          outgoingTraffic: outgoingTrafficPerIP.get(ip) || 0,
+        }));
 
-      const html = `
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>服务状态监控</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f8f9fa; color: #343a40; }
-    .container { max-width: 1200px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    h1, h2 { color: #007bff; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    .stat-item { background: #e9ecef; padding: 15px; border-radius: 5px; }
-    .stat-item strong { color: #495057; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 10px; border: 1px solid #dee2e6; text-align: left; }
-    th { background-color: #007bff; color: white; cursor: pointer; }
-    th:hover { background-color: #0056b3; }
-    .controls { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-    .pagination { display: flex; align-items: center; }
-    .pagination button, .pagination select, .controls select { margin: 0 5px; padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>服务状态监控</h1>
-    <div class="stats-grid">
-      <div class="stat-item"><strong>状态:</strong> <span style="color: green;">OK</span></div>
-      <div class="stat-item"><strong>总请求数:</strong> ${totalRequests}</div>
-      <div class="stat-item"><strong>总接收流量:</strong> ${(totalIncomingTraffic / 1024 / 1024).toFixed(3)} MB</div>
-      <div class="stat-item"><strong>总发送流量:</strong> ${(totalOutgoingTraffic / 1024 / 1024).toFixed(3)} MB</div>
-      <div class="stat-item"><strong>服务器时间 (UTC):</strong> <span id="server-time"></span></div>
-      <div class="stat-item"><strong>用户本地时间:</strong> <span id="local-time"></span></div>
-      <div class="stat-item"><strong>服务器已运行:</strong> <span id="uptime"></span></div>
-    </div>
+        const serverData = {
+          totalRequests,
+          totalIncomingTraffic,
+          totalOutgoingTraffic,
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime(),
+          ipStats: ipStatsArray,
+          requestLogsByIP: Object.fromEntries(requestLogsByIP),
+        };
 
-    <h2>IP 访问统计</h2>
-    <div class="controls">
-      <div>
-        <label for="sort-by">排序方式:</label>
-        <select id="sort-by">
-          <option value="requests">请求次数</option>
-          <option value="incomingTraffic">接收流量</option>
-          <option value="outgoingTraffic">发送流量</option>
-          <option value="ip">IP 地址</option>
-        </select>
-        <label for="sort-order">排序顺序:</label>
-        <select id="sort-order">
-          <option value="desc">降序</option>
-          <option value="asc">升序</option>
-        </select>
-      </div>
-      <div class="pagination">
-        <label for="items-per-page">每页显示:</label>
-        <select id="items-per-page">
-          <option value="10">10</option>
-          <option value="25">25</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-        </select>
-        <button id="prev-page">上一页</button>
-        <span id="page-info"></span>
-        <button id="next-page">下一页</button>
-      </div>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th data-sort="ip">IP 地址</th>
-          <th data-sort="requests">请求次数</th>
-          <th data-sort="incomingTraffic">接收流量 (MB)</th>
-          <th data-sort="outgoingTraffic">发送流量 (MB)</th>
-        </tr>
-      </thead>
-      <tbody id="ip-stats-body">
-      </tbody>
-    </table>
-  </div>
+        const finalHtml = htmlTemplate.replace(
+          '//__SERVER_DATA__',
+          `const serverData = ${JSON.stringify(serverData)};`
+        );
 
-  <script>
-    const serverData = {
-      timestamp: "${new Date().toISOString()}",
-      uptime: ${process.uptime()},
-      ipStats: ${JSON.stringify(ipStatsArray)}
-    };
+        res.writeHead(200, { 'Content-Type': 'text/html;charset=UTF-8' });
+        res.end(finalHtml);
 
-    let currentPage = 1;
-    let itemsPerPage = 10;
-    let sortKey = 'requests';
-    let sortOrder = 'desc';
-    let sortedData = [];
-
-    function formatUptime(seconds) {
-      const units = [
-        { label: '年', seconds: 31536000 },
-        { label: '月', seconds: 2592000 },
-        { label: '天', seconds: 86400 },
-        { label: '时', seconds: 3600 },
-        { label: '分', seconds: 60 },
-        { label: '秒', seconds: 1 }
-      ];
-      let remaining = seconds;
-      let result = '';
-      for (const unit of units) {
-        if (remaining >= unit.seconds) {
-          const count = Math.floor(remaining / unit.seconds);
-          result += \`\${count}\${unit.label}\`;
-          remaining %= unit.seconds;
-        }
+      } catch (error) {
+        logger.error('无法读取 health.html 文件', { error: error.message });
+        res.writeHead(500, { 'Content-Type': 'application/json;charset=UTF-8' });
+        res.end(JSON.stringify({ error: 'Internal Server Error: Cannot read health page template.' }));
       }
-      return result || '0秒';
-    }
-
-    function renderTable() {
-      const tableBody = document.getElementById('ip-stats-body');
-      tableBody.innerHTML = '';
-      
-      sortedData = [...serverData.ipStats].sort((a, b) => {
-        let valA = a[sortKey];
-        let valB = b[sortKey];
-        if (sortKey === 'ip') {
-            // IP address sorting
-            const ipA = valA.split('.').map(Number);
-            const ipB = valB.split('.').map(Number);
-            for(let i = 0; i < 4; i++) {
-                if(ipA[i] !== ipB[i]) {
-                    return sortOrder === 'asc' ? ipA[i] - ipB[i] : ipB[i] - ipA[i];
-                }
-            }
-            return 0;
-        }
-        return sortOrder === 'asc' ? valA - valB : valB - valA;
-      });
-
-      const start = (currentPage - 1) * itemsPerPage;
-      const end = start + itemsPerPage;
-      const paginatedData = sortedData.slice(start, end);
-
-      paginatedData.forEach(item => {
-        const row = document.createElement('tr');
-        row.innerHTML = \`
-          <td>\${item.ip}</td>
-          <td>\${item.requests}</td>
-          <td>\${(item.incomingTraffic / 1024 / 1024).toFixed(3)}</td>
-          <td>\${(item.outgoingTraffic / 1024 / 1024).toFixed(3)}</td>
-        \`;
-        tableBody.appendChild(row);
-      });
-      
-      updatePagination();
-    }
-
-    function updatePagination() {
-      const pageInfo = document.getElementById('page-info');
-      const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-      pageInfo.textContent = \`第 \${currentPage} / \${totalPages} 页\`;
-      document.getElementById('prev-page').disabled = currentPage === 1;
-      document.getElementById('next-page').disabled = currentPage === totalPages;
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      const serverTimeEl = document.getElementById('server-time');
-      const localTimeEl = document.getElementById('local-time');
-      const uptimeEl = document.getElementById('uptime');
-      
-      const serverDate = new Date(serverData.timestamp);
-      serverTimeEl.textContent = serverDate.toISOString();
-      localTimeEl.textContent = serverDate.toLocaleString();
-      uptimeEl.textContent = formatUptime(serverData.uptime);
-
-      document.getElementById('sort-by').addEventListener('change', (e) => {
-        sortKey = e.target.value;
-        renderTable();
-      });
-      
-      document.getElementById('sort-order').addEventListener('change', (e) => {
-        sortOrder = e.target.value;
-        renderTable();
-      });
-
-      document.querySelectorAll('th[data-sort]').forEach(th => {
-        th.addEventListener('click', () => {
-          const newSortKey = th.getAttribute('data-sort');
-          if (sortKey === newSortKey) {
-            sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
-          } else {
-            sortKey = newSortKey;
-            sortOrder = 'desc';
-          }
-          document.getElementById('sort-by').value = sortKey;
-          document.getElementById('sort-order').value = sortOrder;
-          renderTable();
-        });
-      });
-
-      document.getElementById('items-per-page').addEventListener('change', (e) => {
-        itemsPerPage = parseInt(e.target.value, 10);
-        currentPage = 1;
-        renderTable();
-      });
-
-      document.getElementById('prev-page').addEventListener('click', () => {
-        if (currentPage > 1) {
-          currentPage--;
-          renderTable();
-        }
-      });
-
-      document.getElementById('next-page').addEventListener('click', () => {
-        const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-        if (currentPage < totalPages) {
-          currentPage++;
-          renderTable();
-        }
-      });
-
-      renderTable();
-    });
-  </script>
-</body>
-</html>
-      `;
-      res.writeHead(200, { 'Content-Type': 'text/html;charset=UTF-8' });
-      res.end(html);
       return;
     }
 
