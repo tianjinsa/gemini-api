@@ -349,7 +349,8 @@ async function handleAPIRequest(req, res, clientIP) {
     requestLogsByIP.get(clientIP).push(logEntry);
     const path = url.pathname;
     const authHeader = req.headers['authorization'];
-    const isOpenAI = path.startsWith('/v1beta/openai/') || !!authHeader;
+    // 修正 isOpenAI 的判断逻辑，使其严格基于路径，避免歧义
+    const isOpenAI = path.startsWith('/v1beta/openai/') || path.startsWith('/v1/');
     
     let suffix = path;
     if (path.startsWith('/v1beta/openai')) {
@@ -623,7 +624,9 @@ async function handleRequest(req, res) {
       return;
     }
     
-    if (url.pathname.startsWith('/v1beta') || req.headers['authorization'] || req.headers['x-goog-api-key']) {
+    // 修正 API 请求的判断条件，使其严格基于路径
+    // 这样可以防止带有认证头的无效路径请求绕过IP封禁逻辑
+    if (url.pathname.startsWith('/v1beta') || url.pathname.startsWith('/v1/')) {
       handleAPIRequest(req, res, clientIP);
       return;
     }
