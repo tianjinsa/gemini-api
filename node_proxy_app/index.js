@@ -537,9 +537,8 @@ async function handleRequest(req, res) {
     }
 
     // 在处理前记录请求信息
-    logger.info('收到请求', { clientIP, path: url.pathname+url.search});
+    logger.info('收到请求', { clientIP, path: url.pathname+url.search, sizeKB: (req.headers['content-length'] || 0) / 1024 });
 
-    
     // 1. 轻量级健康检查端点 (新)
     if (url.pathname === '/health' || url.pathname === '/healthz') {
       logger.info('收到轻量级健康检查请求', { clientIP, path: url.pathname });
