@@ -117,7 +117,7 @@
     
     function parseModel(path) {
         if (!path) return 'N/A';
-        const match = path.match(/models\/([a-zA-Z0-9_-]+)/);
+        const match = path.match(/models\/([a-zA-Z0-9.-]+)/);
         return match ? match[1] : 'N/A';
     }
 

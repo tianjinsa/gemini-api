@@ -540,8 +540,20 @@ async function handleRequest(req, res) {
     logger.info('收到请求', { clientIP, path: url.pathname+url.search});
 
     
-    // 2. 升级版健康检查端点
+    // 1. 轻量级健康检查端点 (新)
     if (url.pathname === '/health' || url.pathname === '/healthz') {
+      logger.info('收到轻量级健康检查请求', { clientIP, path: url.pathname });
+      res.writeHead(200, { 'Content-Type': 'application/json;charset=UTF-8' });
+      res.end(JSON.stringify({
+        status: 'OK',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+
+    // 2. 详细服务状态仪表板 (从原健康检查分离)
+    if (url.pathname === '/dashboard') {
       const password = process.env.HEALTH_CHECK_PASSWORD;
       if (password) {
         const auth = { login: 'admin', password };
@@ -586,9 +598,9 @@ async function handleRequest(req, res) {
       } catch (error) {
         logger.error('无法读取 health.html 文件', { error: error.message });
         res.writeHead(500, { 'Content-Type': 'application/json;charset=UTF-8' });
-        res.end(JSON.stringify({ error: 'Internal Server Error: Cannot read health page template.' }));
-      }
-      return;
+        res.end(JSON.stringify({ error: 'Internal Server Error: Cannot read dashboard template.' }));
+        }
+        return;
     }
 
     // 3. 忽略 /favicon.ico 请求
