@@ -537,11 +537,11 @@ async function handleRequest(req, res) {
     }
 
     // 在处理前记录请求信息
-    logger.info('收到请求', { clientIP, path: url.pathname+url.search, sizeKB: (req.headers['content-length'] || 0) / 1024 });
+    logger.info('收到请求', { IP: clientIP, path: url.pathname+url.search, KB: ((req.headers['content-length'] || 0) / 1024).toFixed(3) });
 
     // 1. 轻量级健康检查端点 (新)
     if (url.pathname === '/health' || url.pathname === '/healthz') {
-      logger.info('收到轻量级健康检查请求', { clientIP, path: url.pathname });
+      logger.info('收到轻量级健康检查请求', { IP: clientIP, path: url.pathname });
       res.writeHead(200, { 'Content-Type': 'application/json;charset=UTF-8' });
       res.end(JSON.stringify({
         status: 'OK',
@@ -643,7 +643,7 @@ async function handleRequest(req, res) {
     }
 
     // 对于所有其他请求，视为非法访问并封禁IP
-    logger.warn('无效路径访问尝试，正在封禁IP', { clientIP, path: url.pathname });
+    logger.warn('无效路径访问尝试，正在封禁IP', { IP: clientIP, path: url.pathname });
     blockedIPs.set(clientIP, Date.now() + BLOCK_DURATION_MS);
     // 不返回任何信息，直接销毁socket，让攻击方请求超时
     req.socket.destroy();

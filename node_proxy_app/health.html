@@ -171,7 +171,7 @@
         const detailsContainer = document.querySelector(`#details-${ip.replace(/\./g, '-')} .details-container`);
         if (!detailsContainer) return;
 
-        const logs = serverData.requestLogsByIP[ip] || [];
+        const logs = (serverData.requestLogsByIP[ip] || []).slice().reverse();
         if (!detailPagingState[ip]) {
             detailPagingState[ip] = { currentPage: 1, itemsPerPage: 5 };
         }
@@ -190,8 +190,8 @@
                         <tr>
                             <th>时间 (本地)</th>
                             <th>请求模型</th>
-                            <th>接收流量 (Bytes)</th>
-                            <th>发送流量 (Bytes)</th>
+                            <th>接收流量 (KB)</th>
+                            <th>发送流量 (KB)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -199,8 +199,8 @@
                             <tr>
                                 <td>${new Date(log.timestamp).toLocaleString()}</td>
                                 <td>${parseModel(log.path)}</td>
-                                <td>${log.incomingTraffic}</td>
-                                <td>${log.outgoingTraffic}</td>
+                                <td>${(log.incomingTraffic / 1024).toFixed(3)}</td>
+                                <td>${(log.outgoingTraffic / 1024).toFixed(3)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
