@@ -33,7 +33,6 @@
     </div>
     <ToastContainer />
     <PreviewModal />
-    <ImagePreviewModal />
     <ConfirmDialog />
   <BanManager />
   <AliasManager />
@@ -53,7 +52,6 @@ import TopicListPanel from '@/components/TopicListPanel.vue';
 import MessagePanel from '@/components/MessagePanel.vue';
 import ToastContainer from '@/components/ToastContainer.vue';
 import PreviewModal from '@/components/PreviewModal.vue';
-import ImagePreviewModal from '@/components/ImagePreviewModal.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import BanManager from '@/components/BanManager.vue';
 import AliasManager from '@/components/AliasManager.vue';
@@ -183,11 +181,6 @@ onMounted(async () => {
   await dashboard.initialize();
   await dashboard.refreshLightStats();
 });
-
-function retry() {
-  dashboard.refreshLightStats();
-  dashboard.refreshFullStats();
-}
 </script>
 
 <style scoped>

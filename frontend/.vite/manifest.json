@@ -8,7 +8,7 @@
     "name": "vendor-vue"
   },
   "index.html": {
-    "file": "assets/index-CsEuKRGq.js",
+    "file": "assets/index-CcSBXHmf.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -17,7 +17,7 @@
       "_vendor-dayjs-CC1MZq2R.js"
     ],
     "css": [
-      "assets/index-Ba3t1eQb.css"
+      "assets/index-B2W1cyLs.css"
     ]
   }
 }

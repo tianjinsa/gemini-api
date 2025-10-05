@@ -35,14 +35,6 @@ export const useUiStore = defineStore('ui', () => {
     payload: null
   });
 
-  const imagePreview = reactive<{ open: boolean; src: string; name?: string }>(
-    {
-      open: false,
-      src: '',
-      name: undefined
-    }
-  );
-
   const confirmDialog = reactive<{
     open: boolean;
     options: ConfirmOptions | null;
@@ -84,18 +76,6 @@ export const useUiStore = defineStore('ui', () => {
     preview.payload = null;
   }
 
-  function showImagePreview(src: string, name?: string) {
-    imagePreview.open = true;
-    imagePreview.src = src;
-    imagePreview.name = name;
-  }
-
-  function closeImagePreview() {
-    imagePreview.open = false;
-    imagePreview.src = '';
-    imagePreview.name = undefined;
-  }
-
   function confirm(options: ConfirmOptions) {
     if (confirmDialog.open && confirmDialog.resolve) {
       confirmDialog.resolve(false);
@@ -132,7 +112,6 @@ export const useUiStore = defineStore('ui', () => {
   return {
     toasts,
     preview,
-    imagePreview,
     confirmDialog,
     banManagerOpen,
   aliasManagerOpen,
@@ -141,8 +120,6 @@ export const useUiStore = defineStore('ui', () => {
     dismissToast,
     showPreview,
     closePreview,
-    showImagePreview,
-    closeImagePreview,
     confirm,
     resolveConfirm,
     toggleBanManager,

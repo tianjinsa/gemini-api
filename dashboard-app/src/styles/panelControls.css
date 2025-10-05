@@ -9,9 +9,6 @@
   --panel-radius: 18px;
   --panel-rail-width: 108px;
   --panel-control-radius: 12px;
-  --panel-control-collapse-width: 44px;
-  --panel-control-expand-width: 220px;
-  --panel-control-transition: 0.25s ease;
 }
 
 .panel {
@@ -241,95 +238,6 @@ button.control-button {
   font-size: 0.72rem;
 }
 
-.panel-filter,
-.panel-select {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  width: var(--panel-control-collapse-width);
-  padding: 0.35rem 0.5rem;
-  border-radius: var(--panel-control-radius);
-  border: 1px solid rgba(100, 130, 200, 0.28);
-  background: rgba(26, 40, 68, 0.68);
-  transition: width var(--panel-control-transition), background 0.25s ease, border-color 0.25s ease;
-  overflow: hidden;
-  color: rgba(235, 242, 255, 0.88);
-  margin: 0 auto;
-}
-
-.panel-filter__icon,
-.panel-select__icon {
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-
-.panel-filter input,
-.panel-select select {
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  width: 100%;
-  min-width: 0;
-  opacity: 0;
-  transition: opacity 0.2s ease 0.05s;
-}
-
-.panel-filter input::placeholder {
-  color: rgba(210, 224, 255, 0.6);
-}
-
-.panel-filter input:disabled {
-  color: rgba(210, 220, 240, 0.38);
-}
-
-.panel-filter:hover,
-.panel-filter:focus-within,
-.panel-filter--active,
-.panel-select:hover,
-.panel-select:focus-within,
-.panel-select--active {
-  width: var(--panel-control-expand-width);
-  border-color: rgba(120, 160, 250, 0.55);
-  background: rgba(36, 52, 88, 0.9);
-  z-index: 5;
-}
-
-.panel-filter:hover input,
-.panel-filter:focus-within input,
-.panel-filter--active input,
-.panel-select:hover select,
-.panel-select:focus-within select,
-.panel-select--active select {
-  opacity: 1;
-}
-
-.panel-select select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  padding-right: 1.4rem;
-  cursor: pointer;
-}
-
-.panel-select::after {
-  content: '\25BE';
-  position: absolute;
-  right: 0.65rem;
-  font-size: 0.75rem;
-  color: rgba(210, 224, 255, 0.6);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease 0.05s;
-}
-
-.panel-select:hover::after,
-.panel-select:focus-within::after,
-.panel-select--active::after {
-  opacity: 1;
-}
-
 .panel-content {
   flex: 1;
   overflow-y: auto;
@@ -428,9 +336,3 @@ button.control-button {
   }
 }
 
-@media (max-width: 720px) {
-  :root {
-    --panel-control-collapse-width: 40px;
-    --panel-control-expand-width: 180px;
-  }
-}

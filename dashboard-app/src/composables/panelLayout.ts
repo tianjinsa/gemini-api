@@ -82,7 +82,6 @@ export function usePanelLayout(order: PanelId[]) {
     setViewport: instance.setViewport,
     setContainerSize: instance.setContainerSize,
     setFocusedPanel: instance.setFocusedCard,
-    updatePanelMetrics: instance.updateCardMetrics,
     updatePanelHeader: instance.updateCardHeader
   };
 }

@@ -85,10 +85,7 @@ const overlayClasses = computed(() => [
 ]);
 
 const iconClasses = computed(() => ({
-  'overlay-control__icon': true,
-  'panel-control__icon': true,
-  'panel-filter__icon': variant.value === 'filter',
-  'panel-select__icon': variant.value === 'sort'
+  'overlay-control__icon': true
 }));
 
 const FIELD_OFFSET = 56;
@@ -270,6 +267,11 @@ onBeforeUnmount(() => {
   box-shadow: 0 18px 38px rgba(0, 0, 0, 0.35);
   width: 100%;
   white-space: nowrap;
+}
+
+.overlay-control__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 

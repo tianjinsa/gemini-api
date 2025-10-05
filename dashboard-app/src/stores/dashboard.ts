@@ -772,12 +772,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     return null;
   }
 
-  function acknowledgeUpdates() {
-    if (selectedIp.value) {
-      markIpRead(selectedIp.value);
-    }
-  }
-
   function isTopicUnread(ip: string, topicId: string) {
     const cache = topicsCache.get(ip);
     return cache ? cache.unreadTopicIds.has(topicId) : false;
@@ -874,7 +868,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     refreshAliasKeys,
     setSelectedIp,
     setSelectedTopic,
-    acknowledgeUpdates,
     isTopicUnread,
     getMessageDetail,
     getMessageRequestBody,
