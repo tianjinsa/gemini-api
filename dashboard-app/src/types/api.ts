@@ -69,11 +69,6 @@ export interface TopicsResponse {
 
 export type MessageRole = 'user' | 'model' | 'system' | string;
 
-// 附件功能已移除
-export interface MessageAttachment {
-  // 保留接口以兼容,但不再使用
-}
-
 export interface MessageTokens {
   pTokCnt?: number;
   candTokCnt?: number;

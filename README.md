@@ -43,8 +43,6 @@
 - **三面板层叠布局**：响应式设计，支持桌面/移动端自适应
 - **Prompt Token 明细**：显示不同模态（TEXT/IMAGE/AUDIO）的 Token 分布
 - **错误状态高亮**：模型错误时，消息气泡全局红色主题
-- **附件预览**：支持文本、图片附件的即时预览
-- **Markdown 渲染**：集成 GitHub 暗色主题，代码块一键复制
 
 ### 🔒 安全特性
 
@@ -154,7 +152,6 @@ npm run build
 - **懒加载设计**：
   - 请求体/请求头前端按需加载
   - 错误详情对象按需获取
-  - 附件内容分块读取
 
 #### 📊 Token 统计增强
 
@@ -250,17 +247,13 @@ CREATE TABLE alias_keys (
    - 时间线排序
 
 3. **消息详情面板**（右）
-   - 用户/模型消息展示
    - Token 统计明细
    - 错误详情懒加载
-   - 附件预览支持
 
 **交互特性：**
 
 - 聚焦面板自动展开，非聚焦面板折叠为标题栏
 - 过滤/排序浮层：桌面端鼠标悬停触发，移动端点击触发
-- 消息截断：列表中仅显示前 45 行，点击"查看全部"弹窗展示完整内容
-- Markdown 渲染：GitHub 暗色主题 + 代码块复制按钮
 
 #### 📈 实时统计数据
 
@@ -768,8 +761,8 @@ CREATE TABLE messages (
   ip TEXT NOT NULL,
   role TEXT NOT NULL,
   request_url TEXT,
-  has_request_headers INTEGER DEFAULT 0,
-  has_request_body INTEGER DEFAULT 0,
+  has_request_headers INTEGER DEFAULT 0,    //经过脱敏
+  has_request_body INTEGER DEFAULT 0,       //经过脱敏
   meta TEXT,
   created_at INTEGER,
   FOREIGN KEY(topic_id) REFERENCES topics(topic_id) ON DELETE CASCADE

@@ -107,10 +107,6 @@ function initializeDatabase() {
       )
     `);
 
-    // message_contents表已废弃 - 不再保存消息正文和思考内容
-    // attachments表已废弃 - 不再保存附件
-    // original_requests表已废弃 - 请求信息现在直接存储在messages表中
-
     // 创建message_metadata表
     db.exec(`
       CREATE TABLE IF NOT EXISTS message_metadata (
