@@ -2,7 +2,7 @@
 
 > **增强型 Gemini API 代理服务器**，支持请求缓存、对话追踪、安全防护、实时监控仪表盘及 IP 别名管理系统。
 
-> **隐私声明：**代理不会持久化请求正文内容（只会留下请求体的结构），同时对所有持久化的请求头执行“白名单”过滤，仅保留 `Host`、`User-Agent`、`X-Forwarded-For`、`Content-Type` 等必要元信息（如 `Authorization`、`Cookie`、`Set-Cookie`、`X-API-Key` 等敏感字段会被自动剔除）。
+> **隐私声明：**代理不会持久化用户请求或模型回复的任何具体内容（只会留下请求体的结构），对用户请求或模型回复的json都有经过脱敏处理，会用一个占位符来替换具体内容（不会有任何文本，附件，图片残留），同时对所有持久化的请求头执行“白名单”过滤，仅保留 `Host`、`User-Agent`、`X-Forwarded-For`、`Content-Type` 等必要元信息（如 `Authorization`、`Cookie`、`Set-Cookie`、`X-API-Key` 等敏感字段会被自动剔除）。
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D14.0.0-green.svg)](https://nodejs.org/)
