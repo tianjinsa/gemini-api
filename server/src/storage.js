@@ -1,9 +1,7 @@
 // 基于better-sqlite3的统一存储管理模块
-// 将所有数据存储在SQLite数据库中，包括消息内容、附件、原始请求JSON等
 
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const logger = require('./utils/logger');
 

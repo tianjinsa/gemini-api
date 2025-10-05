@@ -1,7 +1,6 @@
 import { dashboardHttpClient } from './httpClient';
 import type {
   AliasKeysResponse,
-  AttachmentTextResponse,
   BanIpPayload,
   BlockedIPsResponse,
   DeleteAliasKeyPayload,
@@ -13,13 +12,11 @@ import type {
   ModelErrorDetailsResponse,
   MessageRequestBodyResponse,
   MessageRequestHeadersResponse,
-  MessageResponse,
   SimpleOkResponse,
   TopicMessagesResponse,
   TopicsResponse,
   UnbanIpPayload
 } from '@/types';
-import { getApiBase, getDashboardToken } from '@/config';
 
 export const fetchLightStats = () => dashboardHttpClient.get<LightStatsResponse>('/lightStats');
 
@@ -47,11 +44,6 @@ export const fetchTopicMessages = (
     }
   });
 
-export const fetchMessage = (id: string) =>
-  dashboardHttpClient.get<MessageResponse>('/message', {
-    params: { id }
-  });
-
 export const fetchMessageRequestBody = (id: string) =>
   dashboardHttpClient.get<MessageRequestBodyResponse>('/messageRequestBody', {
     params: { id }
@@ -65,34 +57,6 @@ export const fetchMessageRequestHeaders = (id: string) =>
 export const fetchModelErrorDetails = (id: string) =>
   dashboardHttpClient.get<ModelErrorDetailsResponse>('/modelError', {
     params: { id }
-  });
-
-export const fetchAttachment = async (file: string, signal?: AbortSignal) => {
-  const token = getDashboardToken();
-  const apiBase = getApiBase().replace(/\/$/, '');
-  const url = `${apiBase}/attachment?file=${encodeURIComponent(file)}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    signal,
-    headers: token ? { 'x-dashboard-token': token } : undefined,
-    credentials: 'same-origin'
-  });
-
-  if (!response.ok) {
-    throw new Error(`附件下载失败: ${response.status}`);
-  }
-
-  return response;
-};
-
-export const fetchAttachmentText = (file: string, opts: { offset?: number; limit?: number } = {}) =>
-  dashboardHttpClient.get<AttachmentTextResponse>('/attachmentText', {
-    params: {
-      file,
-      offset: opts.offset,
-      limit: opts.limit
-    }
   });
 
 export const deleteTopics = (payload: DeleteTopicsPayload) =>

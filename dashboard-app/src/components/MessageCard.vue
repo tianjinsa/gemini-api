@@ -11,21 +11,6 @@
           {{ modelStatusLabel }}
         </span>
       </div>
-      <div class="message-card__actions">
-        <span class="timestamp" :title="absoluteTime">
-          <span v-if="loading" class="loading-dot"></span>
-          {{ relativeTime }}
-        </span>
-        <button
-          v-if="loadError"
-          class="ghost-button ghost-button--alert"
-          :disabled="loading"
-          @click="loadContent(true)"
-        >
-          <IconSymbol name="refresh" />
-          重试加载
-        </button>
-      </div>
     </header>
 
     <!-- 用户消息: 显示请求信息 -->
@@ -671,15 +656,6 @@ const rootElement = computed<HTMLElement | undefined>(() => {
   return target ? (unref(target) ?? undefined) : undefined;
 });
 
-useIntersectionObserver(cardEl, ([entry]) => {
-  if (entry.isIntersecting) {
-    triggerAutoLoad();
-  }
-}, {
-  root: rootElement,
-  threshold: 0.25
-});
-
 watch(() => props.message.id, () => {
   autoTriggered.value = false;
   loadError.value = false;
@@ -693,29 +669,6 @@ watch(modelHasErrorDetails, has => {
     resetModelErrorState();
   }
 });
-
-async function triggerAutoLoad() {
-  if (autoTriggered.value) return;
-  autoTriggered.value = true;
-  if (!requestUrl.value && props.message.role === 'user') {
-    await loadContent();
-  }
-}
-
-async function loadContent(force = false) {
-  if (loading.value) return;
-  if (!force && detail.value) return;
-  loading.value = true;
-  loadError.value = false;
-  try {
-    await dashboard.loadMessageDetail(props.message.id, force);
-  } catch (error) {
-    loadError.value = true;
-    ui.pushToast({ type: 'error', title: '加载失败', message: error instanceof Error ? error.message : String(error) });
-  } finally {
-    loading.value = false;
-  }
-}
 
 function hasBodyContent(body: unknown): boolean {
   if (body === null || body === undefined) return false;

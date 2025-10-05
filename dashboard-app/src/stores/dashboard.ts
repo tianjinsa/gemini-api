@@ -7,13 +7,11 @@ import {
   deleteIP as apiDeleteIP,
   deleteTopics as apiDeleteTopics,
   fetchAliasKeys,
-  fetchAttachmentText,
   fetchBlockedIPs,
   fetchFullStats,
   fetchGlobalDelta,
   fetchIPTopics,
   fetchLightStats,
-  fetchMessage,
   fetchMessageRequestBody,
   fetchMessageRequestHeaders,
   fetchModelErrorDetails,
@@ -621,28 +619,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
-  async function loadMessageDetail(id: string, force = false) {
-    if (!id) return;
-    const cache = messageDetailCache.get(id);
-    if (!force && cache) {
-      return cache.data;
-    }
-    if (loadingMessageDetail.get(id)) {
-      return cache?.data;
-    }
-    loadingMessageDetail.set(id, true);
-    try {
-      const response = await fetchMessage(id);
-      messageDetailCache.set(id, {
-        data: response,
-        fetchedAt: Date.now()
-      });
-      return response;
-    } finally {
-      loadingMessageDetail.delete(id);
-    }
-  }
-
   async function loadMessageRequestBody(id: string, force = false) {
     if (!id) return;
     const cache = messageRequestBodyCache.get(id);
@@ -683,34 +659,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
       fetchedAt: Date.now()
     });
     return response;
-  }
-
-  async function loadAttachmentText(file: string, opts: { offset?: number; limit?: number; force?: boolean } = {}) {
-    if (!file) return;
-    const key = `${file}:${opts.offset ?? 0}:${opts.limit ?? ''}`;
-    const cache = attachmentTextCache.get(key);
-    if (!opts.force && cache) {
-      return cache.data;
-    }
-
-    if (loadingAttachmentText.get(key)) {
-      return cache?.data;
-    }
-
-    loadingAttachmentText.set(key, true);
-    try {
-      const response = await fetchAttachmentText(file, {
-        offset: opts.offset,
-        limit: opts.limit
-      });
-      attachmentTextCache.set(key, {
-        data: response,
-        fetchedAt: Date.now()
-      });
-      return response;
-    } finally {
-      loadingAttachmentText.delete(key);
-    }
   }
 
   async function removeTopics(ip: string, topicIds: string[]) {
@@ -914,11 +862,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     applyGlobalDelta,
     ensureTopics,
     ensureMessages,
-    loadMessageDetail,
     loadMessageRequestBody,
     loadMessageRequestHeaders,
     loadModelErrorDetails,
-    loadAttachmentText,
     removeTopics,
     removeIp,
     banIp,
