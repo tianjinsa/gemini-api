@@ -1,0 +1,9 @@
+.old
+*/node_modules/
+*/dist/
+*/data/
+*/test*
+node_modules/
+dist/
+data/
+test*

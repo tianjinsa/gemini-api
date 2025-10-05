@@ -1,0 +1,39 @@
+{
+	"name": "vue-layered-layout",
+	"version": "0.2.0",
+	"private": false,
+	"type": "module",
+	"main": "dist/vue-layered-layout.cjs",
+	"module": "dist/vue-layered-layout.es.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/vue-layered-layout.es.js",
+			"require": "./dist/vue-layered-layout.cjs"
+		},
+		"./style.css": "./dist/style.css"
+	},
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "vue-tsc --declaration --emitDeclarationOnly",
+		"test": "vitest"
+	},
+	"peerDependencies": {
+		"vue": "^3.3.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.14.10",
+		"@vitejs/plugin-vue": "^6.0.1",
+		"typescript": "^5.5.4",
+		"vite": "7.1.7",
+		"vite-plugin-dts": "^4.0.1",
+		"vitest": "^3.2.4",
+		"vue": "^3.4.38",
+		"vue-tsc": "^2.0.28"
+	}
+}

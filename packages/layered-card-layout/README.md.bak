@@ -1,0 +1,284 @@
+# Vue Layered Layout# vue-layered-layout
+
+一个为 Vue 3 设计的灵活的层叠卡片布局组件库,支持桌面端和移动端的自动切换。一个面向 Vue 3 的响应式层叠布局组件库，抽象出 Dashboard 项目中的三面板布局算法。它专注于提供可预测的空间划分、焦点管理与交互基元，而不对内容样式做任何假设，适合作为业务界面中的基础布局引擎。
+
+## ✨ 特性## ✨ 特性
+
+- 🎯 **多卡片组支持** - 在同一容器中创建多个独立的卡片组- 📐 **层叠布局引擎**：在桌面端采用水平层叠 + 动态最小宽度策略，在移动端自动切换为垂直堆叠。
+
+- 📱 **自适应布局** - 根据容器宽度自动切换水平/垂直布局  - 🎯 **焦点驱动**：通过 `setFocusedCard` 或 `requestFocus` 精确控制展开卡片，并自动分配剩余空间。
+
+- 🎨 **CSS 单位支持** - 支持 px、vw、vh、% 等 CSS 单位- 🧩 **纯插槽内容**：容器与卡片对内仅负责布局与尺寸测量，所有业务 UI 均由使用者通过插槽自定义。
+
+- 💪 **TypeScript** - 完整的类型定义- ⚙️ **组合式 API**：`useLayeredLayout` 可脱离组件单独使用，方便按需接入现有项目。
+
+- 🚀 **高性能** - 使用 ResizeObserver 实现高效的尺寸监听- 🧪 **TypeScript 支持**：内置类型定义，构建时自动生成 `.d.ts`。
+
+- 🎭 **非侵入式** - 纯布局原语,不强制特定 UI 风格
+
+## 📦 安装
+
+在 monorepo 中可以通过 workspace 引用，也可以发布到私有源：
+
+```bash
+
+npm install vue-layered-layout```bash
+
+```npm install vue-layered-layout
+
+```
+
+## 🚀 快速开始
+
+## 🚀 快速上手
+
+```vue
+
+<template>### 组合式 API
+
+  <LayeredLayoutContainer :groups="groups">
+
+    <template #default="{ group }">```ts
+
+      <LayeredLayoutGroup v-bind="group">import { useLayeredLayout } from 'vue-layered-layout';
+
+        <template #default="{ card, layout, focus, updateMetrics }">
+
+          <LayeredLayoutCardconst { layout, setViewport, setContainerSize, setFocusedCard, updateCardHeader } = useLayeredLayout({
+
+            :card-id="card.id"  cards: [
+
+            :style="layout.style"    { id: 'alpha', minContentWidth: 480, fixedContentWidth: 480 },
+
+            :is-focused="layout.isFocused"    { id: 'beta', minContentWidth: 560, fixedContentWidth: 560 },
+
+            @focus="focus"    { id: 'gamma', minContentWidth: 720 }
+
+            @update-metrics="updateMetrics"  ]
+
+          >});
+
+            <template #header>
+
+              <h3>{{ card.id }}</h3>setViewport(window.innerWidth, window.innerHeight);
+
+            </template>setContainerSize(1440, 860);
+
+            <template #body>updateCardHeader('alpha', 96, 56);
+
+              <p>内容区域</p>setFocusedCard('beta');
+
+            </template>```
+
+          </LayeredLayoutCard>
+
+        </template>### 容器组件
+
+      </LayeredLayoutGroup>
+
+    </template>```vue
+
+  </LayeredLayoutContainer><template>
+
+</template>  <LayeredLayoutContainer :cards="cards" v-slot="{ card, layout, updateMetrics, focus }">
+
+    <div class="panel" :style="layout.style" @mouseenter="focus()">
+
+<script setup lang="ts">      <header ref="(el) => registerHeader(el, card.id)">...</header>
+
+import { ref } from 'vue';      <section ref="(el) => reportMetrics(el, card.id, updateMetrics)">...</section>
+
+import {    </div>
+
+  LayeredLayoutContainer,  </LayeredLayoutContainer>
+
+  LayeredLayoutGroup,</template>
+
+  LayeredLayoutCard,
+
+  type CardGroupConfig<script setup lang="ts">
+
+} from 'vue-layered-layout';import { LayeredLayoutContainer } from 'vue-layered-layout';
+
+import 'vue-layered-layout/style.css';
+
+const cards = [
+
+const groups = ref<CardGroupConfig[]>([  { id: 'ipList', minContentWidth: 500, fixedContentWidth: 500 },
+
+  {  { id: 'topicList', minContentWidth: 600, fixedContentWidth: 600 },
+
+    id: 'main',  { id: 'messageList', minContentWidth: 720 }
+
+    cards: [];
+
+      { id: 'card-1', minContentWidth: 400 },</script>
+
+      { id: 'card-2', minContentWidth: 500, initialFocus: true },```
+
+      { id: 'card-3', minContentWidth: 600 }
+
+    ]## 🧰 API 参考
+
+  }
+
+]);### `CardConfig`
+
+</script>
+
+```| 字段 | 说明 |
+
+| --- | --- |
+
+## 📖 文档| `id` | 卡片唯一标识 |
+
+| `minContentWidth` | 桌面端内容区域所需的最小宽度 |
+
+- [使用指南](./doc/USER_GUIDE.md)| `minContentHeight?` | 移动端内容区域所需的最小高度 |
+
+- [技术规格书](./doc/技术规格书.md)| `initialFocus?` | 是否在初始化时聚焦该卡片 |
+
+- [API 参考](./doc/USER_GUIDE.md#-api-参考)| `fixedContentWidth?` | 固定展开宽度（用于列表等固定尺寸面板） |
+
+| `fixedContentHeight?` | 固定展开高度 |
+
+## 🎯 核心概念| `maxContentWidth? / maxContentHeight?` | 展开时的上限 |
+
+| `zIndex?` | 显示层级 |
+
+### 多卡片组
+
+### `useLayeredLayout(options)`
+
+每个卡片组独立管理自己的布局和状态:
+
+| 选项 | 默认值 | 说明 |
+
+```typescript| --- | --- | --- |
+
+const groups = ref([| `cards` | 必填 | 卡片配置数组 |
+
+  {| `breakpoint` | `960` | 视口宽度低于该值时切换到垂直布局 |
+
+    id: 'top-section',| `activeBuffer` | `20` | 聚焦卡片相对内容宽度的额外缓冲 |
+
+    className: 'top-panels',| `minExpandedWidth` | `420` | 水平布局下的最小展开宽度 |
+
+    cards: [
+
+      { id: 'overview' },返回值：
+
+      { id: 'stats' }
+
+    ]- `layout`：`Ref<LayoutResult>`，包含 `orientation`、`cards`、`totalSpan`、`activeCardId`。
+
+  },- `setViewport(width, height)`：设置视口尺寸，触发横竖模式切换。
+
+  {- `setContainerSize(width, height)`：更新容器大小，上下限裁剪自动处理。
+
+    id: 'bottom-section',- `setFocusedCard(id)`：聚焦指定卡片，传入 `null` 清除焦点。
+
+    className: 'bottom-panels',- `updateCardHeader(id, width, height)`：由子组件上报 header 尺寸。
+
+    breakpoint: 768,  // 独立的断点- `updateCardMetrics(id, width, height)`：上报内容区域尺寸。
+
+    cards: [
+
+      { id: 'details' },## 🧪 测试
+
+      { id: 'logs' }
+
+    ]```bash
+
+  }cd packages/layered-card-layout
+
+]);npm install
+
+```npm run test
+
+```
+
+### 自适应布局
+
+## 📜 许可证
+
+布局方向自动根据容器宽度决定:
+
+MIT License © 2025-present
+
+```typescript
+// 当容器宽度 >= 所有卡片的(headerWidth + minContentWidth)之和
+// → 水平布局
+
+// 当容器宽度 < 所需最小宽度
+// → 垂直布局(移动端)
+```
+
+### CSS 单位
+
+支持灵活的 CSS 单位:
+
+```typescript
+{
+  minContentWidth: 500,        // 数字默认为 px
+  minContentWidth: '50vw',     // 视口宽度
+  minContentWidth: '80%',      // 容器百分比
+  minContentHeight: '100vh'    // 视口高度
+}
+```
+
+## 🔧 配置项
+
+### CardGroupConfig
+
+```typescript
+interface CardGroupConfig {
+  id: string;                    // 组 ID
+  cards: CardConfig[];           // 卡片配置
+  className?: string;            // CSS 类名
+  style?: Record<string, any>;   // 内联样式
+  breakpoint?: number;           // 断点(默认: 960)
+  activeBuffer?: number;         // 激活缓冲(默认: 20)
+}
+```
+
+### CardConfig
+
+```typescript
+interface CardConfig {
+  id: string;
+  minContentWidth?: CSSSize;     // 最小宽度(默认: 500)
+  minContentHeight?: CSSSize;    // 最小高度(默认: 500)
+  maxContentWidth?: CSSSize;     // 最大宽度
+  maxContentHeight?: CSSSize;    // 最大高度
+  headerWidth?: number;          // 自定义头部宽度
+  headerHeight?: number;         // 自定义头部高度
+  initialFocus?: boolean;        // 初始聚焦
+  zIndex?: number;               // 层级
+}
+```
+
+## 🎨 样式定制
+
+```vue
+<style>
+/* 自定义卡片样式 */
+:deep(.vl-layered-card) {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* 聚焦状态 */
+:deep(.vl-layered-card.is-focused) {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+</style>
+```
+
+## 📄 许可证
+
+MIT
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request!

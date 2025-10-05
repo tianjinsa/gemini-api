@@ -1,0 +1,23 @@
+{
+  "_vendor-dayjs-CC1MZq2R.js": {
+    "file": "assets/vendor-dayjs-CC1MZq2R.js",
+    "name": "vendor-dayjs"
+  },
+  "_vendor-vue-eOt3kUAp.js": {
+    "file": "assets/vendor-vue-eOt3kUAp.js",
+    "name": "vendor-vue"
+  },
+  "index.html": {
+    "file": "assets/index-DmX3V1yU.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "imports": [
+      "_vendor-vue-eOt3kUAp.js",
+      "_vendor-dayjs-CC1MZq2R.js"
+    ],
+    "css": [
+      "assets/index-BDXMdRqX.css"
+    ]
+  }
+}

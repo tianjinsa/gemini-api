@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="dark light" />
+		<title>Gemini Proxy 控制台</title>
+		<style>
+			:root {
+				color-scheme: dark;
+			}
+
+			body {
+				margin: 0;
+				font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'PingFang SC',
+					'Microsoft YaHei', sans-serif;
+				background: #07090f;
+				color: #e6edf3;
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			.loading-message {
+				font-size: 0.95rem;
+				letter-spacing: 0.02em;
+				opacity: 0.75;
+			}
+		</style>
+		<script id="dashboard-bootstrap">
+			//__SERVER_DATA__
+		</script>
+		<script>
+			(() => {
+				const ready = (fn) => {
+					if (document.readyState === 'interactive' || document.readyState === 'complete') {
+						fn();
+					} else {
+						document.addEventListener('DOMContentLoaded', fn, { once: true });
+					}
+				};
+
+				ready(async () => {
+					const normalizeBase = (value) => {
+						if (!value) return '';
+						return value.endsWith('/') ? value.slice(0, -1) : value;
+					};
+
+					const cdnBase = normalizeBase(
+						(window.OPENLIST_CONFIG && window.OPENLIST_CONFIG.cdn) || window.__dynamic_base__ || ''
+					);
+					const fallbackBase = '/dashboard-static';
+					const base = cdnBase || fallbackBase;
+					const indexUrl = `${base}/index.html`;
+
+					const toAbsolute = (value) => {
+						if (!value) return value;
+						if (/^https?:\/\//i.test(value) || value.startsWith('//')) return value;
+						return `${base}/${value.replace(/^\//, '')}`;
+					};
+
+					const adoptNode = (node) => {
+						const tag = node.tagName?.toLowerCase();
+						if (!tag) return;
+
+						if (tag === 'script') {
+							const script = document.createElement('script');
+							Array.from(node.attributes).forEach((attr) => {
+								if (attr.name === 'src') {
+									script.src = toAbsolute(attr.value);
+									script.crossOrigin = 'anonymous';
+								} else {
+									script.setAttribute(attr.name, attr.value);
+								}
+							});
+							if (!node.src) {
+								script.textContent = node.textContent || '';
+							}
+							document.head.appendChild(script);
+							return;
+						}
+
+						if (tag === 'link') {
+							const link = document.createElement('link');
+							Array.from(node.attributes).forEach((attr) => {
+								if (attr.name === 'href') {
+									link.href = toAbsolute(attr.value);
+								} else {
+									link.setAttribute(attr.name, attr.value);
+								}
+							});
+							link.crossOrigin = 'anonymous';
+							document.head.appendChild(link);
+							return;
+						}
+
+						if (tag === 'style') {
+							const style = document.createElement('style');
+							style.textContent = node.textContent || '';
+							document.head.appendChild(style);
+						}
+					};
+
+					try {
+						const response = await fetch(indexUrl, { cache: 'no-cache' });
+						if (!response.ok) {
+							throw new Error(`索引加载失败: ${response.status}`);
+						}
+
+						const html = await response.text();
+						const parser = new DOMParser();
+						const parsed = parser.parseFromString(html, 'text/html');
+
+						document.title = parsed.title || document.title;
+						Array.from(parsed.head.children).forEach(adoptNode);
+
+						const bodyRoot = document.body;
+						bodyRoot.innerHTML = '';
+						Array.from(parsed.body.children).forEach((child) => {
+							if (child.tagName && child.tagName.toLowerCase() === 'script') {
+								adoptNode(child);
+							} else {
+								bodyRoot.appendChild(document.importNode(child, true));
+							}
+						});
+					} catch (error) {
+						console.error('[Dashboard] 无法加载入口文件', error);
+						const body = document.body;
+						body.innerHTML = `<pre style="padding:1.5rem;font-family:Consolas,monospace;background:#0b0f18;color:#f8fafc;white-space:pre-wrap;">加载控制台失败\n${
+							error.message || error
+						}</pre>`;
+					}
+				});
+			})();
+		</script>
+	</head>
+	<body>
+		<div id="app" class="loading-message">控制台加载中…</div>
+		<noscript>请启用 JavaScript 以使用控制台。</noscript>
+	</body>
+</html>
