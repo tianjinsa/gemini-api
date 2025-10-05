@@ -9,6 +9,43 @@ const { generateId } = require('../utils/helpers');
 const { createOrAppendMessage, loadTopic, loadIndex, db } = require('../storage');
 const { hashBufferOrBase64, isReasoningPart } = require('../utils/dataExtractor');
 
+const HEADER_WHITELIST = new Set([
+  'host',
+  'x-forwarded-for',
+  'x-forwarded-host',
+  'x-forwarded-proto',
+  'x-forwarded-port',
+  'x-real-ip',
+  'connection',
+  'content-length',
+  'content-type',
+  'accept',
+  'accept-encoding',
+  'accept-language',
+  'accept-charset',
+  'user-agent',
+  'referer',
+  'http-referer',
+  'origin',
+  'priority',
+  'sec-fetch-site',
+  'sec-fetch-mode',
+  'sec-fetch-dest',
+  'sec-fetch-user',
+  'sec-ch-ua',
+  'sec-ch-ua-platform',
+  'sec-ch-ua-mobile',
+  'sec-ch-ua-arch',
+  'sec-ch-ua-model',
+  'sec-ch-ua-bitness',
+  'sec-ch-ua-full-version',
+  'sec-ch-ua-full-version-list',
+  'x-title',
+  'x-requested-with',
+  'x-client-version',
+  'x-forwarded-prefix'
+]);
+
 class MessageProcessor {
   constructor(dataDir) {
     this.dataDir = dataDir;
@@ -488,6 +525,64 @@ class MessageProcessor {
     return { text, attachmentHashes, reasoning };
   }
 
+  sanitizeRequestHeaders(headers) {
+    if (!headers || (typeof headers !== 'object' && typeof headers !== 'function')) {
+      return null;
+    }
+
+    const entries = [];
+
+    try {
+      if (headers && typeof headers.forEach === 'function' && typeof headers.get === 'function') {
+        headers.forEach((value, key) => {
+          entries.push([key, value]);
+        });
+      } else {
+        for (const key of Object.keys(headers)) {
+          entries.push([key, headers[key]]);
+        }
+      }
+    } catch (error) {
+      logger.warn('遍历请求头失败，已跳过请求头白名单过滤', { error: error.message });
+      return null;
+    }
+
+    const sanitized = {};
+
+    for (const [rawKey, rawValue] of entries) {
+      if (!rawKey) continue;
+      const key = String(rawKey);
+      const lowerKey = key.toLowerCase();
+
+      if (!HEADER_WHITELIST.has(lowerKey)) {
+        continue;
+      }
+
+      if (rawValue === undefined || rawValue === null) {
+        continue;
+      }
+
+      if (Array.isArray(rawValue)) {
+        const cleaned = rawValue
+          .map((item) => (item === undefined || item === null ? null : String(item)))
+          .filter((item) => item !== null && item.length > 0);
+        if (cleaned.length > 0) {
+          sanitized[key] = cleaned;
+        }
+        continue;
+      }
+
+      const value = String(rawValue).trim();
+      if (value.length === 0) {
+        continue;
+      }
+
+      sanitized[key] = value;
+    }
+
+    return Object.keys(sanitized).length > 0 ? sanitized : null;
+  }
+
   /**
    * 准备待保存的消息 - 重构后只保存请求信息和哈希值
    */
@@ -526,12 +621,14 @@ class MessageProcessor {
     }
 
     // 用户消息:保存完整的请求体(包含历史上下文),作为一条消息记录
+    const sanitizedHeaders = this.sanitizeRequestHeaders(headers);
+
     const pendingUserMessage = {
       messageData: {
         id: baseId + '-u',
         role: 'user',
         requestUrl: url ? url.href : null,
-        requestHeaders: headers || null,
+        requestHeaders: sanitizedHeaders,
         requestBody: userJson || null,
         meta: {
           path: url ? url.pathname : null,
