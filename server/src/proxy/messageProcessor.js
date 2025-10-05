@@ -620,7 +620,7 @@ class MessageProcessor {
       } catch {}
     }
 
-    // 用户消息:保存完整的请求体(包含历史上下文),作为一条消息记录
+    // 用户消息:保存脱敏后的请求体,作为一条消息记录
     const sanitizedHeaders = this.sanitizeRequestHeaders(headers);
 
     const pendingUserMessage = {
